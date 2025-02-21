@@ -1,115 +1,188 @@
-import React, { useEffect, useRef, useState } from 'react'
-import { ActivityIndicator, FlatList, Modal, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native'
+import React, { useContext, useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, FlatList, Image, Modal, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import moment from 'moment';
 import AppConstants from '../constants/AppConstants';
+import { AuthProvider, AuthContext } from '../context/AuthContext';
+import styles from './HomeScreenStyles';
 
 const tabsMap = {
     "now_playing": "Now Playing", "popular": "Popular", "top_rated": "Top Rated", "upcoming": "Upcoming"
-}
-const themeColor = "#000"
+};
+
 const HomeScreen = () => {
-    const tabsList = Object.keys(tabsMap)
-    const [isLoading, setIsLoading] = useState(false)
-    const { width, height } = useWindowDimensions()
-    const [activeTab, setActiveTab] = useState(tabsList[0])
-    const tabRef = useRef()
-    const tabViewRef = useRef()
-    const [tabsData, setTabsData] = useState(null)
+    return (
+        <AuthProvider>
+            <HomeScreenItem />
+        </AuthProvider>
+    );
+};
+
+const HomeScreenItem = () => {
+    const tabsList = Object.keys(tabsMap);
+    const [isLoading, setIsLoading] = useState(false);
+    const { width } = useWindowDimensions();
+    const [activeTab, setActiveTab] = useState(tabsList[0]);
+    const tabRef = useRef();
+    const tabViewRef = useRef();
+    const { tabsData, setTabsData } = useContext(AuthContext);
 
     useEffect(() => {
-        FetchAllMovies()
-    }, [])
+        FetchAllMovies();
+    }, []);
 
     const FetchAllMovies = () => {
-        setIsLoading(true)
-        Promise.all(tabsList.map(element => FetchMovies(element))).then(response => {
-            const tabsDataItem = {}
-            response.map((element, index) => {
-                tabsDataItem[tabsList[index]] = element
-            })
-            setTabsData({ ...tabsDataItem })
-            setIsLoading(false)
+        setIsLoading(true);
+        Promise.all(tabsList.map(tab => FetchMovies(tab))).then(response => {
+            const tabsDataItem = {};
+            response.forEach((data, index) => {
+                tabsDataItem[tabsList[index]] = data;
+            });
+            setTabsData({ ...tabsDataItem });
+            setIsLoading(false);
         }).catch(err => {
-            setIsLoading(false)
-            console.error(err)
-        })
-    }
-
-    const FetchMovies = async (tabName, pageNumber = 1) => {
-        try {
-            console.log('Fetch', tabName)
-            const response = await fetch(AppConstants.FETCH_BASE_URL + '' + tabName + '?language=en-US&page=' + pageNumber, {
-                method: 'GET',
-                headers: {
-                    'Authorization': 'Bearer ' + AppConstants.FETCH_API_KEY,
-                }
-            })
-            if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`)
-            const responseJson = await response.json()
-            return Promise.resolve(responseJson)
-        } catch (e) {
-            console.log('error', e)
-            return Promise.resolve(null)
-        }
-    }
+            setIsLoading(false);
+            console.error(err);
+        });
+    };
 
     useEffect(() => {
-        const tabIndex = tabsList.indexOf(activeTab) == 0 ? 0 : tabsList.indexOf(activeTab) - 1
-        tabRef?.current?.scrollToIndex({ animated: true, index: tabIndex })
-    }, [activeTab])
+        const tabIndex = Math.max(0, tabsList.indexOf(activeTab) - 1);
+        tabRef?.current?.scrollToIndex({ animated: true, index: tabIndex });
+    }, [activeTab]);
 
     const setTabIndex = (tabName) => {
-        const tabIndex = tabsList.indexOf(tabName)
-        tabViewRef?.current?.scrollToIndex({ animated: true, index: tabIndex })
-    }
+        const tabIndex = tabsList.indexOf(tabName);
+        tabViewRef?.current?.scrollToIndex({ animated: true, index: tabIndex });
+    };
 
-    return <>
-        <SafeAreaView >
+    return (
+        <SafeAreaView>
             <FlatList
                 ref={tabRef}
-                showsHorizontalScrollIndicator={false}
-                style={{ marginTop: 20 }}
                 horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.tabContainer}
                 data={tabsList}
-                renderItem={({ item }) => <TabItem item={tabsMap[item]} isActive={item == activeTab} onPress={() => { setTabIndex(item) }} />}
+                renderItem={({ item }) => (
+                    <TabItem item={tabsMap[item]} isActive={item === activeTab} onPress={() => setTabIndex(item)} />
+                )}
             />
-            {tabsData != null && <FlatList
-                onMomentumScrollEnd={(event) => { setActiveTab(tabsList[Math.round(event.nativeEvent.contentOffset.x / width)]) }}
-                ref={tabViewRef}
-                pagingEnabled={true}
-                showsHorizontalScrollIndicator={false}
-                horizontal
-                data={tabsList}
-                renderItem={({ item }) => (tabsData[item] != null ? <TabViewPage item={tabsData[item]} /> : <EmptyTabItem />)}
-            />}
+            {tabsData && (
+                <FlatList
+                    ref={tabViewRef}
+                    horizontal
+                    pagingEnabled
+                    showsHorizontalScrollIndicator={false}
+                    data={tabsList}
+                    keyExtractor={(item) => item}
+                    renderItem={({ item }) => tabsData[item] ? <TabViewPage name={item} item={tabsData[item]} /> : <EmptyTabItem />}
+                    onMomentumScrollEnd={(event) => {
+                        setActiveTab(tabsList[Math.round(event.nativeEvent.contentOffset.x / width)]);
+                    }}
+                />
+            )}
             {isLoading && <LoadingScreen />}
         </SafeAreaView>
-    </>
-}
+    );
+};
 
-const EmptyTabItem = () => {
-    return <View style={{ width: '100%', height: '100%' }} ><Text >No Data Found</Text></View>
-}
+export const FetchMovies = async (tabName, pageNumber = 1) => {
+    try {
+        const response = await fetch(`${AppConstants.FETCH_BASE_URL}${tabName}?language=en-US&page=${pageNumber}`, {
+            method: 'GET',
+            headers: { 'Authorization': `Bearer ${AppConstants.FETCH_API_KEY}` },
+        });
+        if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+        return await response.json();
+    } catch (error) {
+        console.error('Error fetching movies:', error);
+        return null;
+    }
+};
 
-const LoadingScreen = () => {
-    return <Modal transparent={true} >
-        <View style={{ flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.4)', alignItems: 'center', justifyContent: 'center' }} ><View style={{ flexDirection: 'row', alignItems: 'center' }} ><ActivityIndicator color={'white'} style={{ marginRight: 10 }} /><Text style={{ color: 'white', fontSize: 16, fontWeight: '500' }} >Loading...</Text></View></View>
-    </Modal>
-}
-
-const TabItem = ({ item, isActive, onPress }) => {
-    return <TouchableOpacity onPress={onPress} >
-        <View style={{ width: 140, height: 40, marginBottom: 10, alignItems: 'center', paddingHorizontal: 10, paddingVertical: 4, borderBottomWidth: 2, borderBottomColor: isActive ? themeColor : 'transparent' }} >
-            <Text style={{ fontWeight: '600', fontSize: 16 }} >{item}</Text>
+const TabItem = ({ item, isActive, onPress }) => (
+    <TouchableOpacity onPress={onPress}>
+        <View style={[styles.tabItem, isActive ? styles.activeTab : styles.inactiveTab]}>
+            <Text style={styles.tabText}>{item}</Text>
         </View>
     </TouchableOpacity>
-}
+);
 
-const TabViewPage = ({ item }) => {
-    const { width, height } = useWindowDimensions()
-    return <View style={{ width: width }} >
-        <FlatList style={{ width: '100%' }} data={item.results} renderItem={({ item }) => <Text >{JSON.stringify(item)}</Text>} />
+const TabViewPage = React.memo(({ name, item }) => {
+    const { width } = useWindowDimensions();
+    const { tabsData, setTabsData } = useContext(AuthContext);
+    const [refreshing, setRefreshing] = useState(false);
+
+    const FetchMoviesList = (name, page) => {
+        if (page === 1) setRefreshing(true);
+        FetchMovies(name, page).then(response => {
+            if (response) {
+                tabsData[name].results = page === 1 ? response.results : [...tabsData[name].results, ...response.results];
+                tabsData[name].page = page;
+                setTabsData({ ...tabsData });
+            }
+            setRefreshing(false);
+        }).catch(() => setRefreshing(false));
+    };
+
+    return (
+        <View style={{ width }}>
+            <FlatList
+                data={item.results}
+                keyExtractor={(item, index) => `${item.id}-${index}`}
+                renderItem={({ item }) => <MovieItem item={item} />}
+                refreshing={refreshing}
+                onRefresh={() => FetchMoviesList(name, 1)}
+                onEndReached={() => FetchMoviesList(name, item.page + 1)}
+                onEndReachedThreshold={0.5}
+                getItemLayout={(data, index) => ({ length: 160, offset: 160 * index, index })}
+                ListFooterComponent={<ListFooterComponent />}
+            />
+        </View>
+    );
+});
+
+const ListFooterComponent = () => (
+    <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+        <ActivityIndicator style={{ marginTop: 20, marginBottom: 100 }} />
     </View>
-}
+);
+
+const MovieItem = React.memo(({ item }) => (
+    <View style={styles.movieItemContainer}>
+        <View style={styles.movieImageWrapper} >
+            <Image style={styles.movieImage} source={{ uri: AppConstants.BASE_IMAGE_PATH + item.poster_path }} />
+            <View style={styles.movieBackgroundTopWrapper} />
+        </View>
+        <View style={styles.movieBackgroundWrapper} >
+            <Image style={styles.movieImage} source={{ uri: AppConstants.BASE_IMAGE_PATH + item.poster_path }} />
+        </View>
+        <View style={styles.movieDetails}>
+            <Text style={styles.movieTitle} numberOfLines={2}>{item.title}</Text>
+            <Text style={styles.movieReleaseDate}>{moment(item.release_date).format('MMM D, YYYY')}</Text>
+            <View style={styles.movieRatingContainer}>
+                <Text style={styles.movieRatingText}>{item.vote_average.toFixed(1)} / 10</Text>
+            </View>
+        </View>
+    </View>
+));
+
+const LoadingScreen = () => (
+    <Modal transparent>
+        <View style={styles.loadingScreen}>
+            <View style={styles.loadingContainer}>
+                <ActivityIndicator color='white' style={{ marginRight: 10 }} />
+                <Text style={styles.loadingText}>Loading...</Text>
+            </View>
+        </View>
+    </Modal>
+);
+
+const EmptyTabItem = () => (
+    <View style={{ width: '100%', height: '100%' }}>
+        <Text>No Data Found</Text>
+    </View>
+);
 
 export default HomeScreen;

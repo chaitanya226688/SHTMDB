@@ -5,6 +5,7 @@ import moment from 'moment';
 import AppConstants from '../constants/AppConstants';
 import { AuthProvider, AuthContext } from '../context/AuthContext';
 import styles from './HomeScreenStyles';
+import { useNavigation } from '@react-navigation/native';
 
 const tabsMap = {
     "now_playing": "Now Playing", "popular": "Popular", "top_rated": "Top Rated", "upcoming": "Upcoming"
@@ -96,7 +97,7 @@ export const FetchMovies = async (tabName, pageNumber = 1) => {
         if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
         return await response.json();
     } catch (error) {
-        console.error('Error fetching movies:', error);
+        // console.error('Error fetching movies:', error);
         return null;
     }
 };
@@ -113,6 +114,7 @@ const TabViewPage = React.memo(({ name, item }) => {
     const { width } = useWindowDimensions();
     const { tabsData, setTabsData } = useContext(AuthContext);
     const [refreshing, setRefreshing] = useState(false);
+    const navigation = useNavigation()
 
     const FetchMoviesList = (name, page) => {
         if (page === 1) setRefreshing(true);
@@ -126,12 +128,16 @@ const TabViewPage = React.memo(({ name, item }) => {
         }).catch(() => setRefreshing(false));
     };
 
+    const onMoviePress = (item) => {
+        navigation.navigate('MovieScreen')
+    }
+
     return (
         <View style={{ width }}>
             <FlatList
                 data={item.results}
                 keyExtractor={(item, index) => `${item.id}-${index}`}
-                renderItem={({ item }) => <MovieItem item={item} />}
+                renderItem={({ item }) => <MovieItem item={item} onPress={() => onMoviePress(item)} />}
                 refreshing={refreshing}
                 onRefresh={() => FetchMoviesList(name, 1)}
                 onEndReached={() => FetchMoviesList(name, item.page + 1)}
@@ -149,23 +155,25 @@ const ListFooterComponent = () => (
     </View>
 );
 
-const MovieItem = React.memo(({ item }) => (
-    <View style={styles.movieItemContainer}>
-        <View style={styles.movieImageWrapper} >
-            <Image style={styles.movieImage} source={{ uri: AppConstants.BASE_IMAGE_PATH + item.poster_path }} />
-            <View style={styles.movieBackgroundTopWrapper} />
-        </View>
-        <View style={styles.movieBackgroundWrapper} >
-            <Image style={styles.movieImage} source={{ uri: AppConstants.BASE_IMAGE_PATH + item.poster_path }} />
-        </View>
-        <View style={styles.movieDetails}>
-            <Text style={styles.movieTitle} numberOfLines={2}>{item.title}</Text>
-            <Text style={styles.movieReleaseDate}>{moment(item.release_date).format('MMM D, YYYY')}</Text>
-            <View style={styles.movieRatingContainer}>
-                <Text style={styles.movieRatingText}>{item.vote_average.toFixed(1)} / 10</Text>
+const MovieItem = React.memo(({ item, onPress }) => (
+    <TouchableOpacity onPress={onPress} >
+        <View style={styles.movieItemContainer}>
+            <View style={styles.movieImageWrapper} >
+                <Image style={styles.movieImage} source={{ uri: AppConstants.BASE_IMAGE_PATH + item.backdrop_path }} />
+                <View style={styles.movieBackgroundTopWrapper} />
+            </View>
+            <View style={styles.movieBackgroundWrapper} >
+                <Image style={styles.movieImage} source={{ uri: AppConstants.BASE_IMAGE_PATH + item.poster_path }} />
+            </View>
+            <View style={styles.movieDetails}>
+                <Text style={styles.movieTitle} numberOfLines={2}>{item.title}</Text>
+                <Text style={styles.movieReleaseDate}>{moment(item.release_date).format('MMM D, YYYY')}</Text>
+                <View style={styles.movieRatingContainer}>
+                    <Text style={styles.movieRatingText}>{item.vote_average.toFixed(1)} / 10</Text>
+                </View>
             </View>
         </View>
-    </View>
+    </TouchableOpacity>
 ));
 
 const LoadingScreen = () => (

@@ -129,7 +129,7 @@ const TabViewPage = React.memo(({ name, item }) => {
     };
 
     const onMoviePress = (item) => {
-        navigation.navigate('MovieScreen')
+        navigation.navigate('MovieScreen', { dataItem: item })
     }
 
     return (

@@ -40,11 +40,12 @@ npx react-native run-ios
 │-- package.json      # Dependencies and scripts
 ```
 
-## 🔧 Features
-- 📱 React Native UI Components
-- 🔄 API Integration with Fetch
-- 🚀 React Navigation for seamless navigation
+## 🔧 Review
+The App Code is placed inside the src and test cases are written inside _tests_
 
-## 📜 License
-This project is licensed under the MIT License.
-
+The constants are inside the App constants
+The Context is inside context
+The Screen are in screens folder.
+The Components that are written inside HomeScreen can also be written inside sperate files and can be imported to the HomeScreen
+The API Fetching can be improved a bit more and make it standardized for every api call
+The Unit Tests are inside _tests_

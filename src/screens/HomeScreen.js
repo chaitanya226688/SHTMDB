@@ -11,6 +11,7 @@ const tabsMap = {
     "now_playing": "Now Playing", "popular": "Popular", "top_rated": "Top Rated", "upcoming": "Upcoming"
 };
 
+//HomeScreen Wrapper Component that is wrapped inside context api for state handling
 const HomeScreen = () => {
     return (
         <AuthProvider>
@@ -19,6 +20,7 @@ const HomeScreen = () => {
     );
 };
 
+//HomeScreenComponent which has all the important stuff of the home screen
 const HomeScreenItem = () => {
     const tabsList = Object.keys(tabsMap);
     const [isLoading, setIsLoading] = useState(false);
@@ -32,6 +34,7 @@ const HomeScreenItem = () => {
         FetchAllMovies();
     }, []);
 
+    //Fetch All Movies Categories
     const FetchAllMovies = () => {
         setIsLoading(true);
         Promise.all(tabsList.map(tab => FetchMovies(tab))).then(response => {
@@ -59,6 +62,7 @@ const HomeScreenItem = () => {
 
     return (
         <SafeAreaView>
+            {/* FlatList to render Horizontal Tab Items */}
             <FlatList
                 ref={tabRef}
                 horizontal
@@ -70,6 +74,7 @@ const HomeScreenItem = () => {
                 )}
             />
             {tabsData && (
+                //Flatlist to render Horizontal TabViews
                 <FlatList
                     ref={tabViewRef}
                     horizontal
@@ -88,6 +93,7 @@ const HomeScreenItem = () => {
     );
 };
 
+//API Call to fetch movies list individually based on category
 export const FetchMovies = async (tabName, pageNumber = 1) => {
     try {
         const response = await fetch(`${AppConstants.FETCH_BASE_URL}${tabName}?language=en-US&page=${pageNumber}`, {
@@ -102,6 +108,7 @@ export const FetchMovies = async (tabName, pageNumber = 1) => {
     }
 };
 
+//Tab Item for the Tabs
 const TabItem = ({ item, isActive, onPress }) => (
     <TouchableOpacity onPress={onPress}>
         <View style={[styles.tabItem, isActive ? styles.activeTab : styles.inactiveTab]}>
@@ -110,6 +117,7 @@ const TabItem = ({ item, isActive, onPress }) => (
     </TouchableOpacity>
 );
 
+//Tab View Page
 const TabViewPage = React.memo(({ name, item }) => {
     const { width } = useWindowDimensions();
     const { tabsData, setTabsData } = useContext(AuthContext);
